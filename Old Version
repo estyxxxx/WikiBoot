@@ -1,0 +1,17 @@
+/**
+ * @param {string[]} titles 
+ */
+/* global fetch */
+
+export const handler = async (event) => {
+  const titlesParams = encodeURIComponent(['user:Estyxxxx'].join('|'));
+  const url = `https://en.wikipedia.org/w/api.php?action=purge&format=json&titles=${titlesParams}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  });
+  const data = await res.json();
+  console.log(data);
+};
