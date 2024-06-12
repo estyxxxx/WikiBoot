@@ -1,0 +1,67 @@
+/* global fetch */
+urn {
+import fetch from 'node-fetch'; // Import fetch for Node.js environment
+
+export const handler = async () => {
+  const wikiBaseUrl = 'https://en.wikipedia.org/w/api.php';
+
+  try {
+    // Fetch login token
+    const tokenRes = await fetch(`${wikiBaseUrl}?action=query&meta=tokens&type=login&format=json`);
+    const tokenData = await tokenRes.json();
+    const { query: { tokens: { logintoken } } } = tokenData;
+    const tokenCookies = tokenRes.headers.get('set-cookie');
+
+    // Check environment variables
+    const userName = process.env.USER_NAME;
+    const userPassword = process.env.PASSWORD;
+    if (!userName || !userPassword || !tokenCookies) {
+      throw new Error('Name, password, or token are missing');
+    }
+
+    // Login
+    const loginRes = await fetch(wikiBaseUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Cookie: tokenCookies,
+      },
+      body: new URLSearchParams({
+        lgname: userName,
+        lgtoken: logintoken,
+        lgpassword: userPassword,
+        action: 'login',
+        format: 'json',
+      }),
+    });
+    const loginData = await loginRes.json();
+    const loginCookie = loginRes.headers.get('set-cookie');
+    if (loginData.login.result !== 'Success' || !loginCookie) {
+      throw new Error('Failed to login');
+    }
+
+    // Purge titles
+    const titles = ['user:Estyxxxx'];
+    const titlesParams = encodeURIComponent(titles.join('|'));
+    const purgeUrl = `${wikiBaseUrl}?action=purge&format=json&titles=${titlesParams}`;
+
+    const purgeRes = await fetch(purgeUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Cookie: loginCookie,
+      },
+    });
+    
+    const purgeData = await purgeRes.json();
+    console.log(purgeData);
+
+    return {
+      statusCode: 200,
+      body: JSON.stringify(purgeData),
+    };
+  } catch (error) {
+    console.error('Error:', error);
+    throw error;
+  }
+};
